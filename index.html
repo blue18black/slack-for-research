@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>電析レポート定型文ジェネレーター</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f6f8;
+    --panel: #ffffff;
+    --border: #d8dbe0;
+    --text: #1f2328;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --ok: #059669;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    padding: 14px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+    line-height: 1.45;
+    font-size: 14px;
+  }
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  h1 {
+    font-size: 1.1rem;
+    margin: 0 0 2px;
+  }
+  p.lead {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 14px 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  .dropzone.dragover {
+    border-color: var(--accent);
+    background: rgba(37, 99, 235, 0.06);
+    color: var(--text);
+  }
+  .dropzone strong { color: var(--accent); }
+  input[type="file"] { display: none; }
+
+  .file-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 0.82rem;
+    margin-bottom: 8px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 1px 9px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+  .badge.pulse { background: #dbeafe; color: #1e40af; }
+  .badge.ca { background: #dcfce7; color: #166534; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.76rem;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 4px 7px;
+    text-align: left;
+    white-space: nowrap;
+  }
+  th { background: #f0f1f3; font-weight: 600; }
+  .table-scroll { overflow: auto; max-height: 110px; }
+
+  .gloss-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  fieldset {
+    border: none;
+    padding: 0;
+    margin: 8px 0 0;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  legend {
+    font-weight: 600;
+    margin-bottom: 6px;
+    padding: 0;
+    font-size: 0.85rem;
+  }
+  label.radio {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 100px;
+    resize: vertical;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    background: var(--panel);
+    color: var(--text);
+  }
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  button.copy {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 7px 16px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  button.copy:hover { background: var(--accent-hover); }
+  .copy-msg {
+    color: var(--ok);
+    font-size: 0.8rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .copy-msg.show { opacity: 1; }
+
+  .error {
+    color: #b91c1c;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+  }
+  .hidden { display: none !important; }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181d;
+      --panel: #1f2228;
+      --border: #33373f;
+      --text: #e6e8eb;
+      --muted: #9aa1ac;
+    }
+    th { background: #262a31; }
+    .badge.pulse { background: #1e3a8a33; color: #93c5fd; }
+    .badge.ca { background: #14532d33; color: #86efac; }
+    .error { background: #7f1d1d22; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div>
+    <h1>電析レポート定型文ジェネレーター</h1>
+    <p class="lead">実験条件CSV（パルス電析 / CA電析）を読み込ませると、報告用の定型文を自動生成します。</p>
+  </div>
+
+  <div class="panel">
+    <div id="dropzone" class="dropzone">
+      <div><strong>クリックしてCSVを選択</strong>、またはドラッグ&ドロップ</div>
+      <div style="font-size:0.72rem; margin-top:4px;">対応形式: パルス電析 (Eon, Eoff, on_s, off_s, TOTAL_TIME_S) / CA電析 (CA_VOLT, CA_TIME_S)</div>
+    </div>
+    <input type="file" id="fileInput" accept=".csv,text/csv">
+    <div id="errorBox" class="error hidden" style="margin-top:10px;"></div>
+  </div>
+
+  <div id="resultPanel" class="panel hidden">
+    <div class="file-info">
+      <span id="fileName"></span>
+      <span id="formatBadge" class="badge"></span>
+    </div>
+    <div class="table-scroll">
+      <table id="previewTable"></table>
+    </div>
+  </div>
+
+  <div id="glossPanel" class="panel hidden">
+    <label class="gloss-toggle-row">
+      <input type="checkbox" id="glossToggle"> 金属光沢の確認結果を追加する
+    </label>
+    <fieldset id="glossOptions" class="hidden">
+      <label class="radio"><input type="radio" name="gloss" value="ng" checked> 確認できませんでした</label>
+      <label class="radio"><input type="radio" name="gloss" value="ok"> 確認できました</label>
+    </fieldset>
+  </div>
+
+  <div id="outputPanel" class="panel hidden">
+    <textarea id="outputText" readonly></textarea>
+    <div class="actions">
+      <button class="copy" id="copyBtn">コピー</button>
+      <span class="copy-msg" id="copyMsg">コピーしました</span>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const errorBox = document.getElementById('errorBox');
+  const resultPanel = document.getElementById('resultPanel');
+  const fileNameEl = document.getElementById('fileName');
+  const formatBadge = document.getElementById('formatBadge');
+  const previewTable = document.getElementById('previewTable');
+  const glossPanel = document.getElementById('glossPanel');
+  const glossToggle = document.getElementById('glossToggle');
+  const glossOptions = document.getElementById('glossOptions');
+  const outputPanel = document.getElementById('outputPanel');
+  const outputText = document.getElementById('outputText');
+  const copyBtn = document.getElementById('copyBtn');
+  const copyMsg = document.getElementById('copyMsg');
+
+  let parsedRows = null; // array of objects
+  let detectedFormat = null; // 'pulse' | 'ca'
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropzone.classList.add('dragover');
+  });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    if (e.dataTransfer.files && e.dataTransfer.files.length) {
+      handleFile(e.dataTransfer.files[0]);
+    }
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files && fileInput.files.length) {
+      handleFile(fileInput.files[0]);
+    }
+  });
+
+  document.querySelectorAll('input[name="gloss"]').forEach((el) => {
+    el.addEventListener('change', renderOutput);
+  });
+  glossToggle.addEventListener('change', () => {
+    glossOptions.classList.toggle('hidden', !glossToggle.checked);
+    renderOutput();
+  });
+
+  function showError(msg) {
+    errorBox.textContent = msg;
+    errorBox.classList.remove('hidden');
+    resultPanel.classList.add('hidden');
+    glossPanel.classList.add('hidden');
+    outputPanel.classList.add('hidden');
+  }
+
+  function clearError() {
+    errorBox.classList.add('hidden');
+    errorBox.textContent = '';
+  }
+
+  function handleFile(file) {
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      showError('CSVファイルを選択してください。');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const rows = parseCsv(String(reader.result));
+        if (!rows.length) throw new Error('empty');
+        const headers = Object.keys(rows[0]);
+        if (headers.includes('Eon') && headers.includes('Eoff')) {
+          detectedFormat = 'pulse';
+        } else if (headers.includes('CA_VOLT')) {
+          detectedFormat = 'ca';
+        } else {
+          throw new Error('unsupported');
+        }
+        parsedRows = rows;
+        clearError();
+        fileNameEl.textContent = file.name;
+        formatBadge.textContent = detectedFormat === 'pulse' ? 'パルス電析 CSV' : 'CA電析 CSV';
+        formatBadge.className = 'badge ' + detectedFormat;
+        renderPreview(rows);
+        resultPanel.classList.remove('hidden');
+        glossPanel.classList.remove('hidden');
+        outputPanel.classList.remove('hidden');
+        renderOutput();
+      } catch (err) {
+        parsedRows = null;
+        detectedFormat = null;
+        if (err.message === 'unsupported') {
+          showError('対応していないCSV形式です。パルス電析 (Eon, Eoff...) または CA電析 (CA_VOLT...) の条件ファイルを選択してください。');
+        } else {
+          showError('CSVの読み込みに失敗しました。ファイルの中身を確認してください。');
+        }
+      }
+    };
+    reader.onerror = () => showError('ファイルの読み込みに失敗しました。');
+    reader.readAsText(file, 'utf-8');
+  }
+
+  // Minimal CSV parser supporting quoted fields with commas.
+  function parseCsv(text) {
+    const lines = text.replace(/^﻿/, '').split(/\r\n|\n|\r/).filter((l) => l.trim() !== '');
+    if (!lines.length) return [];
+    const parseLine = (line) => {
+      const fields = [];
+      let cur = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (inQuotes) {
+          if (c === '"') {
+            if (line[i + 1] === '"') { cur += '"'; i++; }
+            else inQuotes = false;
+          } else {
+            cur += c;
+          }
+        } else if (c === '"') {
+          inQuotes = true;
+        } else if (c === ',') {
+          fields.push(cur);
+          cur = '';
+        } else {
+          cur += c;
+        }
+      }
+      fields.push(cur);
+      return fields.map((f) => f.trim());
+    };
+    const headers = parseLine(lines[0]);
+    return lines.slice(1).map((line) => {
+      const fields = parseLine(line);
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = fields[i] !== undefined ? fields[i] : ''; });
+      return obj;
+    });
+  }
+
+  function renderPreview(rows) {
+    const headers = Object.keys(rows[0]);
+    let html = '<thead><tr>' + headers.map((h) => `<th>${h}</th>`).join('') + '</tr></thead>';
+    html += '<tbody>' + rows.map((r) => '<tr>' + headers.map((h) => `<td>${r[h]}</td>`).join('') + '</tr>').join('') + '</tbody>';
+    previewTable.innerHTML = html;
+  }
+
+  function formatNumber(n) {
+    const num = Math.round(n * 100) / 100;
+    return String(num);
+  }
+
+  // Returns unique values in order of first appearance, formatted with unit suffix.
+  function uniqueFormatted(values, unit) {
+    const seen = [];
+    values.forEach((v) => {
+      const s = formatNumber(v) + unit;
+      if (!seen.includes(s)) seen.push(s);
+    });
+    return seen;
+  }
+
+  function buildConditionList(rows, columns) {
+    // columns: [{ label, unit, getValue(row) }]
+    return columns.map((col) => {
+      const values = rows.map((r) => col.getValue(r));
+      const formatted = uniqueFormatted(values, col.unit);
+      return { label: col.label, text: formatted.join('と'), count: formatted.length };
+    });
+  }
+
+  function joinConditions(conditions) {
+    // All but last use "を...の◯通り、"; last uses "が...の◯通りで、"
+    let out = '';
+    conditions.forEach((c, i) => {
+      const isLast = i === conditions.length - 1;
+      if (isLast) {
+        out += `${c.label}が${c.text}の${c.count}通りで、`;
+      } else {
+        out += `${c.label}を${c.text}の${c.count}通り、`;
+      }
+    });
+    return out;
+  }
+
+  function renderOutput() {
+    if (!parsedRows || !detectedFormat) return;
+    const totalRows = parsedRows.length;
+
+    let conditions;
+    let expName;
+    if (detectedFormat === 'pulse') {
+      conditions = buildConditionList(parsedRows, [
+        { label: 'Eon', unit: 'V', getValue: (r) => parseFloat(r.Eon) },
+        { label: 'Eoff', unit: 'V', getValue: (r) => parseFloat(r.Eoff) },
+        { label: 'on_s', unit: 's', getValue: (r) => parseFloat(r.on_s) },
+        { label: 'off_s', unit: 's', getValue: (r) => parseFloat(r.off_s) },
+        {
+          label: 'on_sの総時間',
+          unit: 's',
+          getValue: (r) => {
+            const onS = parseFloat(r.on_s);
+            const offS = parseFloat(r.off_s);
+            const total = parseFloat(r.TOTAL_TIME_S);
+            return (onS * total) / (onS + offS);
+          },
+        },
+      ]);
+      expName = 'パルス電析';
+    } else {
+      conditions = buildConditionList(parsedRows, [
+        { label: 'CA_VOLT', unit: 'V', getValue: (r) => parseFloat(r.CA_VOLT) },
+        { label: 'CA_TIME_S', unit: 's', getValue: (r) => parseFloat(r.CA_TIME_S) },
+      ]);
+      expName = 'CA電析';
+    }
+
+    const conditionText = joinConditions(conditions);
+
+    let message =
+      `お疲れ様です。\n` +
+      `${conditionText}計${totalRows}通りで${expName}の実験を行い、結果をBOXにアップロードしました。`;
+
+    if (glossToggle.checked) {
+      const gloss = document.querySelector('input[name="gloss"]:checked').value;
+      const glossText = gloss === 'ok' ? '確認できました' : '確認できませんでした';
+      const countPhrase = totalRows === 1 ? `${totalRows}つは` : `${totalRows}つとも`;
+      message += `${countPhrase}金属光沢は${glossText}。`;
+    }
+
+    message += '確認よろしくお願いいたします。';
+
+    outputText.value = message;
+  }
+
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(outputText.value);
+    } catch (e) {
+      outputText.select();
+      document.execCommand('copy');
+    }
+    copyMsg.classList.add('show');
+    setTimeout(() => copyMsg.classList.remove('show'), 1500);
+  });
+})();
+</script>
+</body>
+</html>
